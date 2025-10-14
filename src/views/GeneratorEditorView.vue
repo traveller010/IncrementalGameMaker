@@ -42,27 +42,40 @@
           <input id="baseProduction" v-model="newGenerator.baseProduction" type="number" step="1" min="0">
         </div>
 
-        <div v-if="newGenerator.baseCosts.length > 0 && newGenerator.baseCosts[0]">
-            <div class="form-group">
-                <label for="baseCostAmount">Base Cost Amount (for level 1):</label>
-                <input 
-                    id="baseCostAmount" 
-                    v-model="newGenerator.baseCosts[0].amount" 
-                    type="number" 
-                    step="1" 
-                    min="1"
-                >
+        <!-- Multiple Costs Section -->
+        <div class="costs-section">
+            <h4>Base Costs (for level 1)</h4>
+            <div v-for="(cost, index) in newGenerator.baseCosts" :key="index" class="cost-item">
+
+                <div class="form-group">
+                    <label :for="'costAmount-' + index">Cost Amount:</label>
+                    <input
+                        :id="'costAmount-' + index"
+                        v-model="cost.amount"
+                        type="number"
+                        step="1"
+                        min="1"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label :for="'costResource-' + index">Cost Resource:</label>
+                    <select :id="'costResource-' + index" v-model="cost.resourceId" required>
+                        <option value="" disabled>Select Resource</option>
+                        <option v-for="resource in blueprintStore.getResourceNames" :key="resource.id" :value="resource.id">
+                            {{ resource.name }} ({{ resource.id }})
+                        </option>
+                    </select>
+                </div>
+
+                <button type="button" @click="removeCost(index)" class="remove-cost-btn">
+                  &times; Remove
+                </button>
             </div>
 
-            <div class="form-group">
-                <label for="costResource">Resource Used for Cost:</label>
-                <select id="costResource" v-model="newGenerator.baseCosts[0].resourceId" required>
-                    <option value="" disabled>Select Cost Resource</option>
-                    <option v-for="resource in blueprintStore.getResourceNames" :key="resource.id" :value="resource.id">
-                        {{ resource.name }} ({{ resource.id }})
-                    </option>
-                </select>
-            </div>
+            <button type="button" @click="addCost" class="add-cost-btn">
+              + Add Cost
+            </button>
         </div>
 
         <hr>
@@ -106,27 +119,30 @@ const createDefaultFormula = (): StructuredFormula => ({
   steps: [{ type: 'constant', value: '1', operation: 'set' }]
 });
 
-// --- Default Cost Initialization ---
-const createDefaultCost = (): PurchaseCost => ({
-    resourceId: '',
-    amount: new Decimal(10), 
-});
-
-
 // --- Local state for the new generator form ---
 const newGenerator = ref({
   name: '',
   baseProduction: 1,
   outputResource: '',
   
-  // Initialize required Blueprint fields
-  baseCosts: [createDefaultCost()], 
+  baseCosts: [] as PurchaseCost[],
   requiredResources: [] as GeneratorRequirement[], 
   
-  // Formulas
   productionFormula: createDefaultFormula(),
   costScalingFormula: createDefaultFormula(),
 });
+
+// --- Cost Management ---
+const addCost = () => {
+  newGenerator.value.baseCosts.push({
+    resourceId: '',
+    amount: new Decimal(10),
+  });
+};
+
+const removeCost = (index: number) => {
+  newGenerator.value.baseCosts.splice(index, 1);
+};
 
 
 // Function to convert display name to a unique ID
@@ -155,17 +171,14 @@ const generatedId = computed(() => {
 
 
 const isFormValid = computed(() => {
-  // Defensive check to ensure the first cost object exists
-  const cost = newGenerator.value.baseCosts[0]; 
+  const areCostsValid = newGenerator.value.baseCosts.every(cost =>
+    cost.resourceId !== '' && cost.amount.gt(0)
+  );
   
-  // Use explicit checks for null/undefined before accessing properties
-  if (!cost) return false; 
-  
-  // Check form validity and use Decimal.gt() for comparison
   return newGenerator.value.name.trim() !== '' && 
-         newGenerator.value.outputResource !== '' && 
-         cost.resourceId !== '' &&         
-         cost.amount.gt(0) && // Decimal comparison
+         newGenerator.value.outputResource !== '' &&
+         newGenerator.value.baseCosts.length > 0 &&
+         areCostsValid &&
          blueprintStore.blueprint.resources.length > 0;
 });
 
@@ -173,31 +186,22 @@ const isFormValid = computed(() => {
 // --- Action ---
 const addNewGenerator = () => {
   if (!isFormValid.value) return;
-  
-  // Defensive check for cost object before use
-  const costData = newGenerator.value.baseCosts[0];
-  if (!costData) return;
-
 
   const generatorData: GeneratorBlueprint = {
     name: newGenerator.value.name.trim(),
     id: generatedId.value,
     
-    // Core inputs
     baseProduction: new Decimal(newGenerator.value.baseProduction),
     outputResource: newGenerator.value.outputResource,
 
-    // Correctly map the first cost object to the array required
-    baseCosts: [{
-        resourceId: costData.resourceId,
-        amount: new Decimal(costData.amount), // Ensure final submission amount is a Decimal
-    }],
+    baseCosts: newGenerator.value.baseCosts.map(cost => ({
+      resourceId: cost.resourceId,
+      amount: new Decimal(cost.amount),
+    })),
     
-    // Formulas 
     productionFormula: newGenerator.value.productionFormula,
     costScalingFormula: newGenerator.value.costScalingFormula,
     
-    // Pass the required, initialized property
     requiredResources: newGenerator.value.requiredResources, 
   };
 
@@ -208,8 +212,7 @@ const addNewGenerator = () => {
   newGenerator.value.baseProduction = 1;
   newGenerator.value.outputResource = '';
   
-  // Reset cost and formulas
-  newGenerator.value.baseCosts = [createDefaultCost()];
+  newGenerator.value.baseCosts = [];
   newGenerator.value.requiredResources = [];
   newGenerator.value.productionFormula = createDefaultFormula();
   newGenerator.value.costScalingFormula = createDefaultFormula();
@@ -236,6 +239,7 @@ const formatNumber = (value: Decimal | number): string => {
 
 h2 { color: #ccc; margin-bottom: 0.5rem; }
 h3 { color: #aaa; margin-top: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
+h4 { color: #bbb; margin-bottom: 1rem; }
 .description { color: #888; margin-bottom: 2rem; }
 .no-items { color: #888; font-style: italic; margin-top: 10px; }
 
@@ -305,4 +309,46 @@ button:disabled {
 
 hr { border-color: #333; margin: 20px 0; }
 .formula-spacing { margin-bottom: 20px; } 
+
+.costs-section {
+  padding: 15px;
+  border: 1px solid #333;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+}
+
+.cost-item {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #2a2a2a;
+}
+.cost-item:last-child {
+  border-bottom: none;
+}
+
+.add-cost-btn {
+  background-color: #28a745;
+  margin-top: 10px;
+}
+.add-cost-btn:hover {
+  background-color: #218838;
+}
+
+.remove-cost-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  height: fit-content;
+  align-self: end;
+  margin-bottom: 2px;
+}
+.remove-cost-btn:hover {
+  background-color: #c82333;
+}
 </style>
