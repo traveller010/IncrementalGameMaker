@@ -6,13 +6,8 @@ import Decimal from 'break_infinity.js';
 
 // Represents a single mathematical operation step
 export interface FormulaComponent {
-    // Defines the input source: a constant, a generator's level, a resource amount, etc.
     type: 'constant' | 'generator_level' | 'resource_amount' | 'upgrade_level';
-    
-    // The value to use: The literal number (as a string) OR the ID of the target component (e.g., 'landPlot', 'cash')
-    value: string; 
-    
-    // The operation to perform on the current running total.
+    value: string; // The literal number (as a string) OR the ID of the target component
     operation: 'set' | 'add' | 'multiply' | 'power' | 'sub' | 'divide'; 
 }
 
@@ -21,58 +16,110 @@ export interface StructuredFormula {
     steps: FormulaComponent[];
 }
 
-// --- II. BLUEPRINT INTERFACES ---
+// --- II. UNLOCK / COST STRUCTURES & SETTINGS ---
 
-// Represents a resource (e.g., Cash, Dirt, Influence)
-export interface ResourceBlueprint {
-    id: string; // Unique identifier (e.g., 'cash')
-    name: string;
-    initialAmount: Decimal; // Starting amount
+// Defines a condition that must be met to unlock/purchase something (Used for Tiers and Upgrades)
+export interface UnlockCondition {
+    resourceId: string;
+    value: Decimal; // The amount required
 }
 
-// Represents a production unit (e.g., Land Plot, Server Farm)
+// Defines a condition based on a required component level (Used for Generator requirements)
+export interface GeneratorRequirement {
+    resourceId: string;
+    minLevel: number; // The required level of the generator or upgrade
+}
+
+// Defines a single currency/amount pair for purchase (Used for multi-cost generators/upgrades)
+export interface PurchaseCost {
+    resourceId: string;
+    amount: Decimal;
+}
+
+export interface GameSettings {
+    offlineProgressEnabled: boolean; // Controlled by the user
+}
+
+// --- III. TIERS AND AUTOMATION ---
+
+export interface AutomationBlueprint {
+    id: string;
+    name: string;
+    targetId: string; 
+    type: 'auto_buy_generator' | 'auto_buy_upgrade' | 'auto_sell_resource';
+    condition: UnlockCondition[]; 
+}
+
+export interface TierBlueprint {
+    id: string;
+    name: string;
+    isPrestigeTier: boolean;
+
+    unlockConditions: UnlockCondition[];
+
+    prestigeCurrencyId: string;
+    prestigeFormula: StructuredFormula; 
+}
+
+
+// --- IV. CORE ENTITIES ---
+
+export interface ResourceBlueprint {
+    id: string;
+    name: string;
+    initialAmount: Decimal;
+    isPermanent: boolean; // ⬅️ The field that caused the last error
+}
+
 export interface GeneratorBlueprint {
     id: string; 
     name: string;
     
     // Production
-    outputResource: string; // ID of the resource it produces
+    outputResource: string;
     baseProduction: Decimal;
     productionFormula: StructuredFormula; 
 
-    // Cost Scaling
-    baseCost: Decimal;
+    // Cost (Multi-cost structure)
+    baseCosts: PurchaseCost[]; // Array of cost options
     costScalingFormula: StructuredFormula; 
     
-    // Dependencies/Requirements (e.g., requires 5 Manpower to build)
-    requiredResources: { resourceId: string, minLevel: number }[]; 
+    // Requirements (Using GeneratorRequirement)
+    requiredResources: GeneratorRequirement[]; 
+    
+    // NOTE: unlockConditions is NOT here; it's only for Tiers/Upgrades
 }
 
-// Represents a multiplier or global upgrade category
 export interface UpgradeBlueprint {
     id: string; 
     name: string;
     type: 'additive' | 'multiplicative';
     levels: number; 
 
-    // Upgrade Effect
+    // Effect
     effectFormula: StructuredFormula; 
+    effectTargetId: string; 
     
-    // Cost Scaling
+    // Cost
     costFormula: StructuredFormula;   
+    costResource: string;
     
-    // Unlock Conditions (e.g., requires 1e10 Cash to unlock)
-    unlockConditions: { resourceId: string, value: Decimal }[];
+    // Unlock
+    unlockConditions: UnlockCondition[];
 }
 
 
-// --- III. THE MAIN BLUEPRINT (Schema for the entire user-created game) ---
+// --- V. THE MAIN BLUEPRINT ---
 
 export interface GameBlueprint {
     gameTitle: string;
     version: number;
-    resources: ResourceBlueprint[];
+
+    settings: GameSettings;
+    tiers: TierBlueprint[];
+
+    resources: ResourceBlueprint[]; 
     generators: GeneratorBlueprint[];
     upgrades: UpgradeBlueprint[];
-    // Future: Unlocks, automations, display settings
+    automations: AutomationBlueprint[];
 }

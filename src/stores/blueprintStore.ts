@@ -1,60 +1,33 @@
 // src/stores/blueprintStore.ts
 
 import { defineStore } from 'pinia';
-import type { 
-    GameBlueprint, 
-    ResourceBlueprint, 
-    StructuredFormula 
+import type {
+    GameBlueprint,
+    ResourceBlueprint,
+    StructuredFormula,
+    GeneratorBlueprint,
+    GameSettings,
+    TierBlueprint,
+    AutomationBlueprint,
+    PurchaseCost
 } from '@/types/Blueprint.ts';
 import Decimal from 'break_infinity.js';
-
-// --- Default Formula Structure ---
-// A simple formula resulting in (1 * Level)
-const defaultFormula: StructuredFormula = {
-    steps: [
-        { type: 'constant', value: '1', operation: 'set' },
-        { type: 'generator_level', value: 'landPlot', operation: 'multiply' },
-    ]
-};
 
 // --- Default Game State ---
 const defaultBlueprint: GameBlueprint = {
     gameTitle: 'My New Incremental Game',
     version: 1,
-    resources: [
-        { 
-            id: 'cash', 
-            name: 'Cash', 
-            initialAmount: new Decimal(0) 
-        },
-        { 
-            id: 'gen_resource', 
-            name: 'Generated Resource', 
-            initialAmount: new Decimal(0) 
-        },
-    ] as ResourceBlueprint[], // Assert as ResourceBlueprint[]
-    
-    generators: [
-        {
-            id: 'landPlot',
-            name: 'Land Plot',
-            baseProduction: new Decimal(1),
-            outputResource: 'gen_resource',
 
-            productionFormula: defaultFormula, 
-            
-            baseCost: new Decimal(10),
-            costScalingFormula: {
-                steps: [
-                    { type: 'constant', value: '10', operation: 'set' },
-                    { type: 'generator_level', value: 'landPlot', operation: 'power' }, // Example: 10 * 1.15^level
-                    { type: 'constant', value: '1.15', operation: 'multiply' },
-                ]
-            },
-            requiredResources: [],
-        }
-    ],
+    // ⚡️ NEW SETTINGS (Required for Offline Progression)
+    settings: {
+        offlineProgressEnabled: true,
+    },
+
+    tiers: [],
+    resources: [] as ResourceBlueprint[],
+    generators: [] as GeneratorBlueprint[],
     upgrades: [],
+    automations: [],
 };
 
 export const useBlueprintStore = defineStore('blueprint', {
@@ -84,10 +57,23 @@ export const useBlueprintStore = defineStore('blueprint', {
         },
 
         // --- Generator Management ---
-        addGenerator(generator: GameBlueprint['generators'][0]) {
-             // Basic validation here
-            this.currentBlueprint.generators.push(generator);
-        },
+addGenerator(generator: GeneratorBlueprint) { 
+    // 1. Check if the generator was created without any cost options
+    if (generator.baseCosts.length === 0 && this.currentBlueprint.resources.length > 0 && this.currentBlueprint.resources[0]) {
+        
+        // 2. Default the cost to 10 units of the first available resource.
+        const defaultCost: PurchaseCost = {
+            resourceId: this.currentBlueprint.resources[0].id,
+            amount: new Decimal(10), 
+        };
+        
+        generator.baseCosts.push(defaultCost);
+    }
+    
+    // Add the generator to the blueprint array
+    this.currentBlueprint.generators.push(generator);
+},
+
 
         // --- Persistence (Will be updated for database later) ---
         loadBlueprint(blueprintData: GameBlueprint) {
