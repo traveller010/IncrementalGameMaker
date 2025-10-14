@@ -6,7 +6,8 @@
         <label :for="'costAmount-' + index">Cost Amount:</label>
         <input
           :id="'costAmount-' + index"
-          v-model="cost.amount"
+          :value="cost.amount.toString()"
+          @input="updateAmount(index, $event)"
           type="number"
           step="1"
           min="1"
@@ -65,6 +66,16 @@ const addCost = () => {
 
 const removeCost = (index: number) => {
   localCosts.value = localCosts.value.filter((_, i) => i !== index);
+};
+
+const updateAmount = (index: number, event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const newAmount = new Decimal(target.value || 0);
+  const updatedCosts = [...localCosts.value];
+  if (updatedCosts[index]) {
+    updatedCosts[index].amount = newAmount;
+    localCosts.value = updatedCosts;
+  }
 };
 </script>
 
