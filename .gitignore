@@ -1,0 +1,42 @@
+# Dependency Directories
+node_modules/
+
+# Build and Distribution Directories (Vite's standard output)
+/dist
+/dist-ssr
+/coverage
+/docs # If you plan to generate documentation
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# OS and Editor Directories/Files
+.DS_Store
+.idea # JetBrains IDEs (IntelliJ, WebStorm)
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# VS Code specific (uncomment these lines if you want to share specific workspace settings)
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json # Often useful to keep shared linting/formatting settings
+
+# TypeScript Cache and Compilation Files
+*.tsbuildinfo
+
+# Vite and Dev-specific Files
+.vite/ # Vite's internal cache folder
+*.local
+
+# Testing/E2E Artifacts (You chose not to use Cypress, but these are good for the future)
+/cypress/videos/
+/cypress/screenshots/
