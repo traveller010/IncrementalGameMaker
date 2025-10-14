@@ -42,41 +42,7 @@
           <input id="baseProduction" v-model="newGenerator.baseProduction" type="number" step="1" min="0">
         </div>
 
-        <!-- Multiple Costs Section -->
-        <div class="costs-section">
-            <h4>Base Costs (for level 1)</h4>
-            <div v-for="(cost, index) in newGenerator.baseCosts" :key="index" class="cost-item">
-
-                <div class="form-group">
-                    <label :for="'costAmount-' + index">Cost Amount:</label>
-                    <input
-                        :id="'costAmount-' + index"
-                        v-model="cost.amount"
-                        type="number"
-                        step="1"
-                        min="1"
-                    >
-                </div>
-
-                <div class="form-group">
-                    <label :for="'costResource-' + index">Cost Resource:</label>
-                    <select :id="'costResource-' + index" v-model="cost.resourceId" required>
-                        <option value="" disabled>Select Resource</option>
-                        <option v-for="resource in blueprintStore.getResourceNames" :key="resource.id" :value="resource.id">
-                            {{ resource.name }} ({{ resource.id }})
-                        </option>
-                    </select>
-                </div>
-
-                <button type="button" @click="removeCost(index)" class="remove-cost-btn">
-                  -
-                </button>
-            </div>
-
-            <button type="button" @click="addCost" class="add-cost-btn">
-              + Add Cost
-            </button>
-        </div>
+        <CostEditor v-model="newGenerator.baseCosts" />
 
         <hr>
 
@@ -111,6 +77,7 @@ import type {
 } from '@/types/Blueprint';
 import Decimal from 'break_infinity.js';
 import FormulaEditor from '@/components/FormulaEditor.vue';
+import CostEditor from '@/components/CostEditor.vue';
 
 const blueprintStore = useBlueprintStore();
 
@@ -131,18 +98,6 @@ const newGenerator = ref({
   productionFormula: createDefaultFormula(),
   costScalingFormula: createDefaultFormula(),
 });
-
-// --- Cost Management ---
-const addCost = () => {
-  newGenerator.value.baseCosts.push({
-    resourceId: '',
-    amount: new Decimal(10),
-  });
-};
-
-const removeCost = (index: number) => {
-  newGenerator.value.baseCosts.splice(index, 1);
-};
 
 
 // Function to convert display name to a unique ID
@@ -309,46 +264,4 @@ button:disabled {
 
 hr { border-color: #333; margin: 20px 0; }
 .formula-spacing { margin-bottom: 20px; } 
-
-.costs-section {
-  padding: 15px;
-  border: 1px solid #333;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-}
-
-.cost-item {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px;
-  border-bottom: 1px solid #2a2a2a;
-}
-.cost-item:last-child {
-  border-bottom: none;
-}
-
-.add-cost-btn {
-  background-color: #28a745;
-  margin-top: 10px;
-}
-.add-cost-btn:hover {
-  background-color: #218838;
-}
-
-.remove-cost-btn {
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  height: fit-content;
-  align-self: end;
-  margin-bottom: 2px;
-}
-.remove-cost-btn:hover {
-  background-color: #c82333;
-}
 </style>

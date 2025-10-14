@@ -14,8 +14,10 @@ vi.mock('@/stores/blueprintStore', () => {
     };
 });
 
+import CostEditor from '../components/CostEditor.vue';
+
 describe('GeneratorEditorView', () => {
-  it('adds and removes costs', async () => {
+  it('renders the CostEditor component', () => {
     const mockStore = {
         blueprint: {
             resources: [{ id: 'gold', name: 'Gold' }],
@@ -32,16 +34,6 @@ describe('GeneratorEditorView', () => {
       },
     });
 
-    // Add a cost
-    await wrapper.find('.add-cost-btn').trigger('click');
-    expect(wrapper.findAll('.cost-item')).toHaveLength(1);
-
-    // Add another cost
-    await wrapper.find('.add-cost-btn').trigger('click');
-    expect(wrapper.findAll('.cost-item')).toHaveLength(2);
-
-    // Remove a cost
-    await wrapper.find('.remove-cost-btn').trigger('click');
-    expect(wrapper.findAll('.cost-item')).toHaveLength(1);
+    expect(wrapper.findComponent(CostEditor).exists()).toBe(true);
   });
 });
