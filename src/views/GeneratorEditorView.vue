@@ -69,7 +69,7 @@
                 </div>
 
                 <button type="button" @click="removeCost(index)" class="remove-cost-btn">
-                  &times; Remove
+                  -
                 </button>
             </div>
 
