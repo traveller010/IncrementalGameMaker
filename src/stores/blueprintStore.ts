@@ -74,6 +74,15 @@ addGenerator(generator: GeneratorBlueprint) {
     this.currentBlueprint.generators.push(generator);
 },
 
+        // --- Upgrade Management ---
+        addUpgrade(upgrade: UpgradeBlueprint) {
+            if (!upgrade.id || this.currentBlueprint.upgrades.some(u => u.id === upgrade.id)) {
+                console.error("Upgrade ID invalid or already exists.");
+                return;
+            }
+            this.currentBlueprint.upgrades.push(upgrade);
+        },
+
 
         // --- Persistence (Will be updated for database later) ---
         loadBlueprint(blueprintData: GameBlueprint) {

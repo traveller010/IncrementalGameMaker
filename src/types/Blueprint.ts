@@ -93,16 +93,15 @@ export interface GeneratorBlueprint {
 export interface UpgradeBlueprint {
     id: string; 
     name: string;
-    type: 'additive' | 'multiplicative';
-    levels: number; 
+    description: string;
 
     // Effect
     effectFormula: StructuredFormula; 
-    effectTargetId: string; 
+    targetId: string;
     
     // Cost
-    costFormula: StructuredFormula;   
-    costResource: string;
+    baseCosts: PurchaseCost[];
+    costFormula: StructuredFormula;
     
     // Unlock
     unlockConditions: UnlockCondition[];

@@ -7,6 +7,7 @@ import App from '../App.vue';
 const routes = [
   { path: '/', component: { template: '<div>Home</div>' } },
   { path: '/generators', component: { template: '<div>Generators</div>' } },
+  { path: '/upgrades', component: { template: '<div>Upgrades</div>' } },
 ];
 
 const router = createRouter({

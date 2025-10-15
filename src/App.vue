@@ -9,6 +9,7 @@ import { version } from '../package.json';
       <nav class="nav-links">
         <RouterLink to="/">Resources</RouterLink>
         <RouterLink to="/generators">Generators</RouterLink>
+        <RouterLink to="/upgrades">Upgrades</RouterLink>
       </nav>
       <span class="version-display">v{{ version }}</span>
     </div>

@@ -14,6 +14,11 @@ const router = createRouter({
       path: '/generators', // The new path for the generator editor
       name: 'generators',
       component: () => import('../views/GeneratorEditorView.vue')
+    },
+    {
+      path: '/upgrades',
+      name: 'upgrades',
+      component: () => import('../views/UpgradeEditorView.vue')
     }
   ]
 })
