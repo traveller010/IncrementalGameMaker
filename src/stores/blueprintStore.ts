@@ -75,13 +75,37 @@ addGenerator(generator: GeneratorBlueprint) {
     this.currentBlueprint.generators.push(generator);
 },
 
-        // --- Upgrade Management ---
         addUpgrade(upgrade: UpgradeBlueprint) {
             if (!upgrade.id || this.currentBlueprint.upgrades.some(u => u.id === upgrade.id)) {
                 console.error("Upgrade ID invalid or already exists.");
                 return;
             }
             this.currentBlueprint.upgrades.push(upgrade);
+        },
+
+        addTier(tier: TierBlueprint) {
+            if (!tier.id || this.currentBlueprint.tiers.some(t => t.id === tier.id)) {
+                console.error("Tier ID invalid or already exists.");
+                return;
+            }
+            this.currentBlueprint.tiers.push(tier);
+        },
+
+        addItemToTier(tierId: string, itemType: 'resources' | 'generators' | 'upgrades', itemId: string) {
+            const tier = this.currentBlueprint.tiers.find(t => t.id === tierId);
+            if (tier && !tier[itemType].includes(itemId)) {
+                tier[itemType].push(itemId);
+            }
+        },
+
+        removeItemFromTier(tierId: string, itemType: 'resources' | 'generators' | 'upgrades', itemId: string) {
+            const tier = this.currentBlueprint.tiers.find(t => t.id === tierId);
+            if (tier) {
+                const index = tier[itemType].indexOf(itemId);
+                if (index > -1) {
+                    tier[itemType].splice(index, 1);
+                }
+            }
         },
 
 

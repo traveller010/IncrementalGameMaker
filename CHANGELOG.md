@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `CHANGELOG.md`, `DESIGN.md`, and `ROADMAP.md` to the project.
 - Implemented the foundational "Upgrades System" with a dedicated editor.
 - Added validation and UI/UX improvements to the Formula Editor.
+- Implemented the "Tiers / Locations" feature.
 
 ### Changed
 - Updated the "Remove" button for costs to a "-" icon for UI consistency.

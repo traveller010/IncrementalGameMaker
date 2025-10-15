@@ -32,17 +32,17 @@ This document outlines the planned features and tasks for the Incremental Game M
         - [x] Implement cost scaling for upgrades.
     - [ ] Create a UI for players to purchase upgrades in the final game.
 
+- [x] **Tier/Location Designer**
+    - [x] Design the data structure for tiers or locations.
+    - [x] Create a `TierEditorView.vue` to manage tiers/locations.
+    - [x] Allow associating generators and upgrades with specific tiers/locations.
+
 - [ ] **Prestige & Tiers**
     - [ ] Design the data structure for prestige tiers.
     - [ ] Create a `PrestigeView.vue` to manage prestige settings.
     - [ ] Implement the core prestige logic (resetting progress, awarding currency).
         - [ ] Define what resources and generators are affected by prestige.
         - [ ] Create a formula for calculating prestige currency gain.
-
-- [ ] **Tier/Location Designer**
-    - [ ] Design the data structure for tiers or locations.
-    - [ ] Create a `TierEditorView.vue` to manage tiers/locations.
-    - [ ] Allow associating generators and upgrades with specific tiers/locations.
 
 - [ ] **Game Export & Playtesting**
     - [ ] Implement functionality to export the current blueprint as a playable game.

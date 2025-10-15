@@ -16,6 +16,11 @@ const router = createRouter({
       component: () => import('../views/GeneratorEditorView.vue')
     },
     {
+      path: '/tiers',
+      name: 'tiers',
+      component: () => import('../views/TierEditorView.vue')
+    },
+    {
       path: '/upgrades',
       name: 'upgrades',
       component: () => import('../views/UpgradeEditorView.vue')

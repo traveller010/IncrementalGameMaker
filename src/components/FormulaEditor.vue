@@ -36,7 +36,7 @@
             :class="{ 'input-error': errors[index] }"
             required
           />
-          <select v-else v-model="step.value" class="value-select" required>
+          <select v-else v-model="step.value" class="value-select" :class="{ 'input-error': errors[index] }" required>
             <option value="" disabled>Select a target...</option>
             <optgroup v-if="step.type === 'generator_level'" label="Generators">
             <option v-for="gen in allGenerators" :key="gen.id" :value="gen.id">
@@ -94,9 +94,6 @@ const emit = defineEmits<{
 const blueprintStore = useBlueprintStore();
 
 // --- Local Reactivity Setup (Computed with Setter) ---
-
-// This computed property reads the prop and emits a change when the setter is used,
-// making local manipulation possible while supporting v-model.
 const localFormula = computed({
     get: () => props.formula,
     set: (newVal) => {
@@ -134,24 +131,17 @@ const allUpgrades = computed(() => blueprintStore.blueprint.upgrades);
 
 // --- Formula Manipulation Actions ---
 const addStep = () => {
-    // 1. Create the new default step
     const newStep: FormulaComponent = {
         type: 'constant',
         value: '1',
         operation: 'add',
     };
-    
-    // 2. Create a NEW array and object to ensure reactivity update
     const updatedSteps = [...localFormula.value.steps, newStep];
-    
-    // 3. Emit the brand new object back to the parent store
     localFormula.value = { steps: updatedSteps };
 };
 
 const removeStep = (index: number) => {
-    if (index === 0 && localFormula.value.steps.length === 1) return; // Prevent removing the last step
-
-    // Create a NEW array by filtering out the step at the given index
+    if (index === 0 && localFormula.value.steps.length === 1) return;
     const updatedSteps = localFormula.value.steps.filter((_, i) => i !== index);
     localFormula.value = { steps: updatedSteps };
 };
@@ -168,7 +158,7 @@ const formulaPreview = computed(() => {
     if (type === 'generator_level') return `Level of '${findIn(allGenerators.value, id)}'`;
     if (type === 'resource_amount') return `Amount of '${findIn(allResources.value, id)}'`;
     if (type === 'upgrade_level') return `Level of '${findIn(allUpgrades.value, id)}'`;
-    return id; // Fallback for constant or unknown
+    return id;
   };
 
   const tokens = localFormula.value.steps.map((step, index) => {
@@ -193,16 +183,13 @@ const formulaPreview = computed(() => {
 });
 
 
-// --- Initialization (Your proven, defensive logic is preserved and corrected) ---
-
-// 1. Ensure the formula array exists and is not empty.
+// --- Initialization ---
 if (!localFormula.value.steps || localFormula.value.steps.length === 0) {
-  localFormula.value = { // Must reassign the entire object to trigger reactivity
+  localFormula.value = {
       steps: [{ type: 'constant', value: '1', operation: 'set' }] 
   };
 }
 
-// 2. Restore your explicitly confirmed defensive check for the 'set' operation
 if (
     localFormula.value.steps.length > 0 &&
     localFormula.value.steps[0] !== undefined &&
@@ -231,7 +218,7 @@ h4 {
   padding: 10px;
   margin-bottom: 15px;
   border-radius: 4px;
-  color: #a2d2fb; /* A lighter, more readable blue */
+  color: #a2d2fb;
   font-family: 'Courier New', Courier, monospace;
   font-size: 1em;
   word-break: break-all;
@@ -240,7 +227,7 @@ h4 {
 
 .formula-preview strong {
   color: #fff;
-  font-weight: normal; /* The color difference is enough */
+  font-weight: normal;
 }
 
 .formula-step {

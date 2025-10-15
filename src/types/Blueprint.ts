@@ -53,12 +53,10 @@ export interface AutomationBlueprint {
 export interface TierBlueprint {
     id: string;
     name: string;
-    isPrestigeTier: boolean;
 
-    unlockConditions: UnlockCondition[];
-
-    prestigeCurrencyId: string;
-    prestigeFormula: StructuredFormula; 
+    generators: string[]; // IDs of generators in this tier
+    upgrades: string[]; // IDs of upgrades in this tier
+    resources: string[]; // IDs of resources in this tier
 }
 
 

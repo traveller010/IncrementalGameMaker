@@ -7,6 +7,7 @@ const routes = [
   { path: '/', component: { template: '<div>Home</div>' } },
   { path: '/generators', component: { template: '<div>Generators</div>' } },
   { path: '/upgrades', component: { template: '<div>Upgrades</div>' } },
+  { path: '/tiers', component: { template: '<div>Tiers</div>' } },
 ];
 
 const router = createRouter({
