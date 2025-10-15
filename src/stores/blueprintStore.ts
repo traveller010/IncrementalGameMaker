@@ -9,7 +9,8 @@ import type {
     GameSettings,
     TierBlueprint,
     AutomationBlueprint,
-    PurchaseCost
+    PurchaseCost,
+    UpgradeBlueprint
 } from '@/types/Blueprint.ts';
 import Decimal from 'break_infinity.js';
 
