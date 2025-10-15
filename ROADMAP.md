@@ -20,10 +20,17 @@ This document outlines the planned features and tasks for the Incremental Game M
         - [x] Refactor cost management into a reusable `CostEditor.vue` component.
         - [x] Fix reactivity issues related to cost updates.
 
-- [ ] **Formula System**
-    - [ ] Enhance `FormulaEditor.vue` with more functions and variables.
-    - [ ] Add validation to prevent invalid formulas.
-    - [ ] Implement a more user-friendly formula builder UI.
+- [x] **Formula System**
+    - [x] Enhance `FormulaEditor.vue` with more functions and variables.
+    - [x] Add validation to prevent invalid formulas.
+    - [x] Implement a more user-friendly formula builder UI.
+
+- [x] **Upgrades System**
+    - [x] Design the data structure for upgrades.
+    - [x] Create an `UpgradeEditorView.vue` to define different upgrades.
+        - [x] Allow upgrades to target generators, resources, or global stats.
+        - [x] Implement cost scaling for upgrades.
+    - [ ] Create a UI for players to purchase upgrades in the final game.
 
 - [ ] **Prestige & Tiers**
     - [ ] Design the data structure for prestige tiers.
@@ -37,13 +44,6 @@ This document outlines the planned features and tasks for the Incremental Game M
     - [ ] Create a `TierEditorView.vue` to manage tiers/locations.
     - [ ] Allow associating generators and upgrades with specific tiers/locations.
 
-- [ ] **Upgrades System**
-    - [ ] Design the data structure for upgrades.
-    - [ ] Create an `UpgradeEditorView.vue` to define different upgrades.
-        - [ ] Allow upgrades to target generators, resources, or global stats.
-        - [ ] Implement cost scaling for upgrades.
-    - [ ] Create a UI for players to purchase upgrades in the final game.
-
 - [ ] **Game Export & Playtesting**
     - [ ] Implement functionality to export the current blueprint as a playable game.
         - [ ] Generate a static HTML/JS file that can be hosted.
@@ -55,5 +55,5 @@ This document outlines the planned features and tasks for the Incremental Game M
     - [x] Add a `DESIGN.md` for brainstorming and architectural notes.
     - [x] Add this `ROADMAP.md` for tracking features and tasks.
     - [x] Implement a version display in the UI.
-    - [ ] Improve unit test coverage across all components.
+    - [x] Improve unit test coverage across all components.
     - [ ] Set up CI/CD for automated testing and deployment.

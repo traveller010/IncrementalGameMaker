@@ -194,7 +194,6 @@ const formatNumber = (value: Decimal | number): string => {
 
 h2 { color: #ccc; margin-bottom: 0.5rem; }
 h3 { color: #aaa; margin-top: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
-h4 { color: #bbb; margin-bottom: 1rem; }
 .description { color: #888; margin-bottom: 2rem; }
 .no-items { color: #888; font-style: italic; margin-top: 10px; }
 

@@ -26,49 +26,56 @@
       </select>
       
       <div class="value-input-group">
-        <input 
-          v-if="step.type === 'constant'" 
-          v-model="step.value" 
-          type="text" 
-          placeholder="Number (e.g., 1.15 or 1e6)"
-          required
-        />
-        
-        <select v-else-if="step.type === 'generator_level'" v-model="step.value" required>
-          <option value="" disabled>Select Generator</option>
-          <option v-for="gen in allGenerators" :key="gen.id" :value="gen.id">
-            {{ gen.name }} Level ({{ gen.id }})
-          </option>
+        <div class="input-wrapper">
+          <input
+            v-if="step.type === 'constant'"
+            v-model="step.value"
+            type="text"
+            placeholder="e.g., 1.15 or 1e6"
+            class="value-input"
+            :class="{ 'input-error': errors[index] }"
+            required
+          />
+          <select v-else v-model="step.value" class="value-select" required>
+            <option value="" disabled>Select a target...</option>
+            <optgroup v-if="step.type === 'generator_level'" label="Generators">
+            <option v-for="gen in allGenerators" :key="gen.id" :value="gen.id">
+              {{ gen.name }} (Level)
+            </option>
+          </optgroup>
+          <optgroup v-if="step.type === 'resource_amount'" label="Resources">
+            <option v-for="res in allResources" :key="res.id" :value="res.id">
+              {{ res.name }} (Amount)
+            </option>
+          </optgroup>
+          <optgroup v-if="step.type === 'upgrade_level'" label="Upgrades">
+            <option v-for="upg in allUpgrades" :key="upg.id" :value="upg.id">
+              {{ upg.name }} (Level)
+            </option>
+          </optgroup>
         </select>
-
-        <select v-else-if="step.type === 'resource_amount'" v-model="step.value" required>
-          <option value="" disabled>Select Resource</option>
-          <option v-for="res in allResources" :key="res.id" :value="res.id">
-            {{ res.name }} Amount ({{ res.id }})
-          </option>
-        </select>
-
-        <select v-else-if="step.type === 'upgrade_level'" v-model="step.value" required>
-          <option value="" disabled>Select Upgrade</option>
-          <option v-for="upg in allUpgrades" :key="upg.id" :value="upg.id">
-            {{ upg.name }} Level ({{ upg.id }})
-          </option>
-        </select>
-        
-        <button type="button" @click="removeStep(index)" class="remove-btn" :disabled="localFormula.steps.length === 1 && index === 0">
+          <p v-if="errors[index]" class="error-message">{{ errors[index] }}</p>
+        </div>
+        <button
+          type="button"
+          @click="removeStep(index)"
+          class="remove-btn"
+          :disabled="localFormula.steps.length === 1 && index === 0"
+          title="Remove this step"
+        >
           —
         </button>
       </div>
     </div>
 
     <button type="button" @click="addStep" class="add-step-btn">
-      + Add Formula Step
+      + Add Step
     </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { StructuredFormula, FormulaComponent } from '@/types/Blueprint';
 import { useBlueprintStore } from '@/stores/blueprintStore';
 import Decimal from 'break_infinity.js';
@@ -96,6 +103,27 @@ const localFormula = computed({
         emit('update:formula', newVal);
     }
 });
+
+// --- Validation ---
+const errors = ref<Record<number, string>>({});
+
+const validateFormula = () => {
+  const newErrors: Record<number, string> = {};
+  localFormula.value.steps.forEach((step, index) => {
+    if (step.type === 'constant') {
+      try {
+        new Decimal(step.value);
+      } catch (e) {
+        newErrors[index] = 'Invalid number';
+      }
+    } else if (!step.value) {
+      newErrors[index] = 'Value is required';
+    }
+  });
+  errors.value = newErrors;
+};
+
+watch(localFormula, validateFormula, { deep: true, immediate: true });
 
 
 // Data sources for selector options
@@ -129,53 +157,38 @@ const removeStep = (index: number) => {
 };
 
 
-// --- Formula Preview Generator (Remains correct) ---
+// --- Formula Preview Generator ---
 const formulaPreview = computed(() => {
-  if (!localFormula.value.steps || localFormula.value.steps.length === 0) {
-    return 'Formula not defined.';
+  if (!localFormula.value || !localFormula.value.steps || localFormula.value.steps.length === 0) {
+    return 'Start by adding a formula step.';
   }
-  
-  const tokens = localFormula.value.steps.map((step: FormulaComponent, index: number) => {
-    let output = '';
-    
-    const getDisplayName = (id: string, type: string) => {
-      if (type === 'generator_level') {
-        return allGenerators.value.find(g => g.id === id)?.name || `[Gen: ${id}]`;
-      }
-      if (type === 'resource_amount') {
-        return allResources.value.find(r => r.id === id)?.name || `[Res: ${id}]`;
-      }
-      if (type === 'upgrade_level') {
-        return allUpgrades.value.find(u => u.id === id)?.name || `[Upg: ${id}]`;
-      }
-      return step.value;
+
+  const getDisplayName = (id: string, type: string): string => {
+    const findIn = (collection: any[], id: string) => collection.find(item => item.id === id)?.name || `[${id}]`;
+    if (type === 'generator_level') return `Level of '${findIn(allGenerators.value, id)}'`;
+    if (type === 'resource_amount') return `Amount of '${findIn(allResources.value, id)}'`;
+    if (type === 'upgrade_level') return `Level of '${findIn(allUpgrades.value, id)}'`;
+    return id; // Fallback for constant or unknown
+  };
+
+  const tokens = localFormula.value.steps.map((step, index) => {
+    const opMap: Record<string, string> = {
+      set: '=',
+      add: '+',
+      sub: '-',
+      multiply: '×',
+      divide: '÷',
+      power: '^',
     };
 
-    // 1. Operation Token
-    const opMap: Record<FormulaComponent['operation'], string> = {
-      'set': 'Result =',
-      'add': ' + ',
-      'sub': ' - ',
-      'multiply': ' * ',
-      'divide': ' / ',
-      'power': ' ^ ',
-    };
-    output += opMap[step.operation] || step.operation;
+    const valueStr = step.type === 'constant' ? step.value : getDisplayName(step.value, step.type);
     
-    // 2. Value/Target Token
-    if (step.type === 'constant') {
-      output += ` ${step.value}`;
-    } else if (step.type === 'generator_level') {
-      output += ` Level of (${getDisplayName(step.value, step.type)})`;
-    } else if (step.type === 'resource_amount') {
-      output += ` Amount of (${getDisplayName(step.value, step.type)})`;
-    } else if (step.type === 'upgrade_level') {
-      output += ` Level of (${getDisplayName(step.value, step.type)})`;
+    if (index === 0) {
+      return `Result ${opMap[step.operation]} ${valueStr}`;
     }
-    
-    return index === 0 ? output : output.trim();
+    return `${opMap[step.operation]} ${valueStr}`;
   });
-  
+
   return tokens.join(' ');
 });
 
@@ -215,17 +228,19 @@ h4 {
 
 .formula-preview {
   background-color: #1e1e1e;
-  padding: 8px;
+  padding: 10px;
   margin-bottom: 15px;
   border-radius: 4px;
-  color: #76c7c0;
-  font-family: monospace;
-  font-size: 0.95em;
+  color: #a2d2fb; /* A lighter, more readable blue */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1em;
   word-break: break-all;
+  border-left: 3px solid #007bff;
 }
 
 .formula-preview strong {
   color: #fff;
+  font-weight: normal; /* The color difference is enough */
 }
 
 .formula-step {
@@ -264,6 +279,23 @@ h4 {
 .value-input-group input,
 .value-input-group select {
   flex-grow: 1;
+}
+
+.input-wrapper {
+  flex-grow: 1;
+  position: relative;
+}
+
+.input-error {
+  border-color: #dc3545 !important;
+}
+
+.error-message {
+  color: #dc3545;
+  font-size: 0.8em;
+  position: absolute;
+  bottom: -18px;
+  left: 5px;
 }
 
 .remove-btn {
