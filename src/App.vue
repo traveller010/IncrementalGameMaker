@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { RouterView, RouterLink } from 'vue-router';
+import { version } from '../package.json';
 </script>
 
 <template>
   <header class="app-header">
-    <nav class="nav-links">
-      <RouterLink to="/">Resources</RouterLink>
-      <RouterLink to="/generators">Generators</RouterLink>
+    <div class="header-content">
+      <nav class="nav-links">
+        <RouterLink to="/">Resources</RouterLink>
+        <RouterLink to="/generators">Generators</RouterLink>
       </nav>
+      <span class="version-display">v{{ version }}</span>
+    </div>
   </header>
   <main class="content-wrapper">
     <RouterView />
@@ -36,11 +40,23 @@ body {
   margin-bottom: 20px;
 }
 
-.nav-links {
+.header-content {
   max-width: 800px;
   margin: 0 auto;
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nav-links {
+  display: flex;
   gap: 20px;
+}
+
+.version-display {
+  color: #888;
+  font-size: 0.9em;
+  font-style: italic;
 }
 
 .nav-links a {
