@@ -145,7 +145,7 @@ const handleSubmit = () => {
     }
 
     // Reset form and editing state
-    newResource.value = { name: '', initialAmount: '0', isPermanent: false };
+    newResource.value = { id: '', name: '', initialAmount: '0', isPermanent: false };
     editingResourceId.value = null;
 };
 </script>
