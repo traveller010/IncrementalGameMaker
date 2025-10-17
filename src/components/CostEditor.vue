@@ -34,17 +34,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { PurchaseCost } from '@/types/Blueprint';
+import type { PurchaseCost, FormPurchaseCost } from '@/types/Blueprint';
 import { useBlueprintStore } from '@/stores/blueprintStore';
 import Decimal from 'break_infinity.js';
 
 interface Props {
-  modelValue: PurchaseCost[];
+  modelValue: (PurchaseCost | FormPurchaseCost)[];
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: PurchaseCost[]): void;
+  (e: 'update:modelValue', value: (PurchaseCost | FormPurchaseCost)[]): void;
 }>();
 
 const blueprintStore = useBlueprintStore();
@@ -57,9 +57,9 @@ const localCosts = computed({
 });
 
 const addCost = () => {
-  const newCost: PurchaseCost = {
+  const newCost: FormPurchaseCost = {
     resourceId: '',
-    amount: new Decimal(10),
+    amount: '10',
   };
   localCosts.value = [...localCosts.value, newCost];
 };
@@ -70,7 +70,7 @@ const removeCost = (index: number) => {
 
 const updateAmount = (index: number, event: Event) => {
   const target = event.target as HTMLInputElement;
-  const newAmount = new Decimal(target.value || 0);
+  const newAmount = target.value;
   const updatedCosts = [...localCosts.value];
   if (updatedCosts[index]) {
     updatedCosts[index].amount = newAmount;

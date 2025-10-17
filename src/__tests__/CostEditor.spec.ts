@@ -3,7 +3,6 @@ import { mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
 import CostEditor from '../components/CostEditor.vue';
 import { useBlueprintStore } from '../stores/blueprintStore';
-import Decimal from 'break_infinity.js';
 
 const pinia = createPinia();
 
@@ -39,7 +38,7 @@ describe('CostEditor', () => {
     let emittedEvent = wrapper.emitted('update:modelValue');
     expect(emittedEvent).toHaveLength(1);
     expect(emittedEvent[0][0]).toHaveLength(1);
-    expect(emittedEvent[0][0][0].amount).toEqual(new Decimal(10));
+    expect(emittedEvent[0][0][0].amount).toBe('10');
 
     // 2. Update the amount
     await wrapper.setProps({ modelValue: emittedEvent[0][0] });
@@ -47,7 +46,7 @@ describe('CostEditor', () => {
     await amountInput.setValue('123');
     emittedEvent = wrapper.emitted('update:modelValue');
     expect(emittedEvent).toHaveLength(2);
-    expect(emittedEvent[1][0][0].amount).toEqual(new Decimal(123));
+    expect(emittedEvent[1][0][0].amount).toBe('123');
 
     // 3. Remove the cost
     await wrapper.setProps({ modelValue: emittedEvent[1][0] });

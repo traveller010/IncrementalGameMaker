@@ -92,6 +92,7 @@ watch(editingResourceId, (newId) => {
         const resourceToEdit = blueprintStore.blueprint.resources.find(r => r.id === newId);
         if (resourceToEdit) {
             newResource.value = {
+                id: resourceToEdit.id,
                 name: resourceToEdit.name,
                 initialAmount: resourceToEdit.initialAmount.toString(),
                 isPermanent: resourceToEdit.isPermanent,
@@ -99,7 +100,7 @@ watch(editingResourceId, (newId) => {
         }
     } else {
         // Reset form when not editing
-        newResource.value = { name: '', initialAmount: '0', isPermanent: false };
+        newResource.value = { id: '', name: '', initialAmount: '0', isPermanent: false };
     }
 });
 
