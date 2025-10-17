@@ -1,6 +1,15 @@
 <script setup lang="ts">
+import { onMounted } from 'vue';
 import { RouterView, RouterLink } from 'vue-router';
 import { version } from '../package.json';
+import { useBlueprintStore } from '@/stores/blueprintStore';
+
+const blueprintStore = useBlueprintStore();
+
+// Load the blueprint from local storage when the app is first mounted
+onMounted(() => {
+  blueprintStore.loadBlueprintFromLocalStorage();
+});
 </script>
 
 <template>
@@ -16,6 +25,12 @@ import { version } from '../package.json';
     </div>
   </header>
   <main class="content-wrapper">
+    <div class="persistence-controls">
+      <button @click="blueprintStore.saveBlueprintToLocalStorage()">Save Blueprint</button>
+      <button @click="blueprintStore.loadBlueprintFromLocalStorage()">Load Blueprint</button>
+      <button @click="blueprintStore.resetBlueprint()" class="reset-btn">Reset to Default</button>
+      <button @click="blueprintStore.exportGame()" class="export-btn">Export Game</button>
+    </div>
     <RouterView />
   </main>
 </template>
@@ -78,5 +93,32 @@ body {
 
 .content-wrapper {
   padding-top: 10px;
+}
+
+.persistence-controls {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  padding: 10px;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+}
+
+.persistence-controls button {
+  background-color: #007bff;
+  color: white;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.persistence-controls .reset-btn {
+  background-color: #6c757d;
+}
+
+.persistence-controls .export-btn {
+  background-color: #28a745;
 }
 </style>

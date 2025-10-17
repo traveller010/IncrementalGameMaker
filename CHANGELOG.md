@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2025-10-15
+
+### Added
+- Implemented a game export feature that generates a standalone, playable HTML file.
+- Created a simple Vue.js-based game engine to run the exported game.
+
+## [0.2.0] - 2025-10-15
+
+### Added
+- Implemented local storage persistence to save and load the game blueprint automatically.
+- Added "Save," "Load," and "Reset" buttons to the UI for manual control over persistence.
+- Added editing functionality for Resources, Generators, and Upgrades.
+
+### Changed
+- Refactored the Tier/Location system to allow adding multiple groups of items (Resource, Generator, Upgrade) to each tier.
+- Updated the Tier editor UI to support the new item group structure.
+
+### Fixed
+- Fixed a bug where the `GeneratorEditorView` would crash when editing a generator due to a type mismatch with `Decimal` objects.
+- Corrected a failing unit test for the `App` component by properly initializing the Pinia store.
+
 ## [0.1.0] - 2025-10-14
 
 ### Added

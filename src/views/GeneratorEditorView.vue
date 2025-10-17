@@ -3,21 +3,22 @@
     <h2>Game Generators</h2>
     <p class="description">Define the production units that convert resources into others (e.g., Land Plot).</p>
 
-    <div class="generator-list">
-      <h3>Defined Generators ({{ blueprintStore.blueprint.generators.length }})</h3>
-      <div v-for="generator in blueprintStore.blueprint.generators" :key="generator.id" class="generator-item">
-        <span class="generator-name">{{ generator.name }}</span>
-        <span class="generator-id">({{ generator.id }})</span>
-        <span class="generator-output">Produces: {{ generator.outputResource }}</span>
-      </div>
-      <p v-if="blueprintStore.blueprint.generators.length === 0" class="no-items">No generators defined yet.</p>
+    <!-- Edit Section -->
+    <div class="edit-generator-section">
+        <h3>Edit Existing Generator</h3>
+        <select v-model="editingGeneratorId" class="edit-select">
+            <option :value="null">-- Create a new generator --</option>
+            <option v-for="gen in blueprintStore.blueprint.generators" :key="gen.id" :value="gen.id">
+                {{ gen.name }} ({{ gen.id }})
+            </option>
+        </select>
     </div>
-    
+
     <hr>
 
     <div class="add-generator-form">
-      <h3>Add New Generator</h3>
-      <form @submit.prevent="addNewGenerator">
+      <h3>{{ editingGeneratorId ? 'Edit Generator' : 'Add New Generator' }}</h3>
+      <form @submit.prevent="handleSubmit">
         
         <div class="form-group">
           <label for="generatorName">Display Name:</label>
@@ -60,20 +61,35 @@
 
         <hr>
 
-        <button type="submit" :disabled="!isFormValid">Add Generator</button>
+        <button type="submit" :disabled="!isFormValid">{{ editingGeneratorId ? 'Save Changes' : 'Add Generator' }}</button>
+        <button type="button" v-if="editingGeneratorId" @click="editingGeneratorId = null" class="cancel-btn">Cancel Edit</button>
       </form>
+    </div>
+
+    <hr>
+
+    <div class="generator-list">
+      <h3>Defined Generators ({{ blueprintStore.blueprint.generators.length }})</h3>
+      <div v-for="generator in blueprintStore.blueprint.generators" :key="generator.id" class="generator-item">
+        <span class="generator-name">{{ generator.name }}</span>
+        <span class="generator-id">({{ generator.id }})</span>
+        <span class="generator-output">Produces: {{ generator.outputResource }}</span>
+        <button @click="editingGeneratorId = generator.id" class="edit-btn">Edit</button>
+      </div>
+      <p v-if="blueprintStore.blueprint.generators.length === 0" class="no-items">No generators defined yet.</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBlueprintStore } from '@/stores/blueprintStore';
-import type { 
-    GeneratorBlueprint, 
-    StructuredFormula, 
-    PurchaseCost, 
-    GeneratorRequirement 
+import type {
+    GeneratorBlueprint,
+    StructuredFormula,
+    GeneratorRequirement,
+    GeneratorFormData,
+    FormPurchaseCost
 } from '@/types/Blueprint';
 import Decimal from 'break_infinity.js';
 import FormulaEditor from '@/components/FormulaEditor.vue';
@@ -81,53 +97,61 @@ import CostEditor from '@/components/CostEditor.vue';
 
 const blueprintStore = useBlueprintStore();
 
-// --- Default Formula Initialization ---
 const createDefaultFormula = (): StructuredFormula => ({
   steps: [{ type: 'constant', value: '1', operation: 'set' }]
 });
 
-// --- Local state for the new generator form ---
-const newGenerator = ref({
-  name: '',
-  baseProduction: 1,
-  outputResource: '',
-  
-  baseCosts: [] as PurchaseCost[],
-  requiredResources: [] as GeneratorRequirement[], 
-  
-  productionFormula: createDefaultFormula(),
-  costScalingFormula: createDefaultFormula(),
+const getInitialGeneratorState = (): GeneratorFormData => ({
+    id: '',
+    name: '',
+    baseProduction: 1,
+    outputResource: '',
+    baseCosts: [] as FormPurchaseCost[],
+    requiredResources: [] as GeneratorRequirement[],
+    productionFormula: createDefaultFormula(),
+    costScalingFormula: createDefaultFormula(),
 });
 
+const newGenerator = ref<GeneratorFormData>(getInitialGeneratorState());
+const editingGeneratorId = ref<string | null>(null);
 
-// Function to convert display name to a unique ID
+watch(editingGeneratorId, (newId) => {
+    if (newId) {
+        const genToEdit = blueprintStore.blueprint.generators.find(g => g.id === newId);
+        if (genToEdit) {
+            newGenerator.value = {
+                ...genToEdit,
+                baseProduction: genToEdit.baseProduction.toNumber(),
+                baseCosts: genToEdit.baseCosts.map(c => ({ ...c, amount: c.amount.toString() })),
+                productionFormula: JSON.parse(JSON.stringify(genToEdit.productionFormula)),
+                costScalingFormula: JSON.parse(JSON.stringify(genToEdit.costScalingFormula)),
+            };
+        }
+    } else {
+        newGenerator.value = getInitialGeneratorState();
+    }
+});
+
 const slugify = (text: string): string => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s-]+/g, '_');
+  return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s-]+/g, '_');
 };
 
-// Auto-generate a unique ID for the new generator
 const generatedId = computed(() => {
-  const baseSlug = slugify(newGenerator.value.name);
-  if (!baseSlug) return '';
-
-  let uniqueId = baseSlug;
-  let counter = 1;
-  
-  while (blueprintStore.blueprint.generators.some(g => g.id === uniqueId)) {
-    uniqueId = `${baseSlug}_${counter}`;
-    counter++;
-  }
-  return uniqueId;
+    if (editingGeneratorId.value) return editingGeneratorId.value;
+    const baseSlug = slugify(newGenerator.value.name);
+    if (!baseSlug) return '';
+    let uniqueId = baseSlug;
+    let counter = 1;
+    while (blueprintStore.blueprint.generators.some(g => g.id === uniqueId)) {
+        uniqueId = `${baseSlug}_${counter}`;
+        counter++;
+    }
+    return uniqueId;
 });
-
 
 const isFormValid = computed(() => {
   const areCostsValid = newGenerator.value.baseCosts.every(cost =>
-    cost.resourceId !== '' && cost.amount.gt(0)
+    cost.resourceId !== '' && new Decimal(cost.amount).gt(0)
   );
   
   return newGenerator.value.name.trim() !== '' && 
@@ -137,49 +161,33 @@ const isFormValid = computed(() => {
          blueprintStore.blueprint.resources.length > 0;
 });
 
-
-// --- Action ---
-const addNewGenerator = () => {
+const handleSubmit = () => {
   if (!isFormValid.value) return;
 
   const generatorData: GeneratorBlueprint = {
-    name: newGenerator.value.name.trim(),
     id: generatedId.value,
-    
-    baseProduction: new Decimal(newGenerator.value.baseProduction),
+    name: newGenerator.value.name.trim(),
     outputResource: newGenerator.value.outputResource,
-
+    baseProduction: new Decimal(newGenerator.value.baseProduction),
+    productionFormula: newGenerator.value.productionFormula,
+    costScalingFormula: newGenerator.value.costScalingFormula,
+    requiredResources: newGenerator.value.requiredResources,
     baseCosts: newGenerator.value.baseCosts.map(cost => ({
       resourceId: cost.resourceId,
       amount: new Decimal(cost.amount),
     })),
-    
-    productionFormula: newGenerator.value.productionFormula,
-    costScalingFormula: newGenerator.value.costScalingFormula,
-    
-    requiredResources: newGenerator.value.requiredResources, 
   };
 
-  blueprintStore.addGenerator(generatorData);
-
-  // Reset form and reinitialize state
-  newGenerator.value.name = '';
-  newGenerator.value.baseProduction = 1;
-  newGenerator.value.outputResource = '';
-  
-  newGenerator.value.baseCosts = [];
-  newGenerator.value.requiredResources = [];
-  newGenerator.value.productionFormula = createDefaultFormula();
-  newGenerator.value.costScalingFormula = createDefaultFormula();
-};
-
-// Helper for display
-const formatNumber = (value: Decimal | number): string => {
-  if (value instanceof Decimal) {
-    return value.toString();
+  if (editingGeneratorId.value) {
+      blueprintStore.updateGenerator(generatorData);
+  } else {
+      blueprintStore.addGenerator(generatorData);
   }
-  return value.toLocaleString();
+
+  newGenerator.value = getInitialGeneratorState();
+  editingGeneratorId.value = null;
 };
+
 </script>
 
 <style scoped>
@@ -197,13 +205,27 @@ h3 { color: #aaa; margin-top: 1.5rem; border-bottom: 1px solid #333; padding-bot
 .description { color: #888; margin-bottom: 2rem; }
 .no-items { color: #888; font-style: italic; margin-top: 10px; }
 
+.edit-generator-section {
+    margin-bottom: 20px;
+}
+
+.edit-select {
+    width: 100%;
+    padding: 8px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
 .generator-list {
   margin-bottom: 1.5rem;
 }
 
 .generator-item {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding: 8px 0;
   border-bottom: 1px dotted #333;
@@ -249,11 +271,20 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 1em;
+  margin-right: 10px;
 }
 
 button:disabled {
   background-color: #555;
   cursor: not-allowed;
+}
+
+.cancel-btn { background-color: #6c757d; }
+.edit-btn {
+    background-color: #ffc107;
+    color: #212529;
+    padding: 5px 10px;
+    font-size: 0.9em;
 }
 
 .error-message {

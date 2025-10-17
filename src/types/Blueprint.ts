@@ -50,13 +50,18 @@ export interface AutomationBlueprint {
     condition: UnlockCondition[]; 
 }
 
+// Represents a linked group of a resource, generator, and upgrade within a tier.
+export interface TierItemGroup {
+    id: string; // A unique ID for this group (e.g., a timestamp or a simple counter)
+    resourceId?: string;
+    generatorId?: string;
+    upgradeId?: string;
+}
+
 export interface TierBlueprint {
     id: string;
     name: string;
-
-    generators: string[]; // IDs of generators in this tier
-    upgrades: string[]; // IDs of upgrades in this tier
-    resources: string[]; // IDs of resources in this tier
+    itemGroups: TierItemGroup[]; // A list of resource/generator/upgrade groups
 }
 
 
@@ -120,3 +125,26 @@ export interface GameBlueprint {
     upgrades: UpgradeBlueprint[];
     automations: AutomationBlueprint[];
 }
+
+// --- VI. FORM-SPECIFIC DATA-TRANSFER-OBJECTS (DTOs) ---
+// These types are used in the Vue components to handle form data, where `Decimal` objects
+// are temporarily converted to strings or numbers for v-model binding.
+
+// A version of PurchaseCost where the amount is a string for form inputs
+export type FormPurchaseCost = Omit<PurchaseCost, 'amount'> & { amount: string };
+
+// DTO for the Resource Editor form
+export type ResourceFormData = Omit<ResourceBlueprint, 'initialAmount'> & {
+    initialAmount: string;
+};
+
+// DTO for the Generator Editor form
+export type GeneratorFormData = Omit<GeneratorBlueprint, 'baseProduction' | 'baseCosts'> & {
+    baseProduction: number;
+    baseCosts: FormPurchaseCost[];
+};
+
+// DTO for the Upgrade Editor form
+export type UpgradeFormData = Omit<UpgradeBlueprint, 'baseCosts'> & {
+    baseCosts: FormPurchaseCost[];
+};

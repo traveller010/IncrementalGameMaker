@@ -1,114 +1,152 @@
 <template>
   <div class="resource-editor">
-    <h2>Game Resources</h2>
-    <p class="description">Define the resources players will accumulate (e.g., Cash, Energy, Dirt).</p>
-
-    <div class="resource-list">
-      <h3>Defined Resources ({{ blueprintStore.blueprint.resources.length }})</h3>
-      <div v-for="resource in blueprintStore.blueprint.resources" :key="resource.id" class="resource-item">
-        <span class="resource-name">{{ resource.name }}</span>
-        <span class="resource-id">({{ resource.id }})</span>
-        <span class="resource-initial">Starts at {{ formatNumber(resource.initialAmount) }}</span>
-        <span v-if="resource.isPermanent" class="resource-initial">(PERMANENT)</span>
-      </div>
-    </div>
+    <h2>Define Resources</h2>
+    <p class="description">Create the primary currencies or materials for your game, like Wood, Gold, or Science Points.</p>
     
+    <!-- Edit Section -->
+    <div class="edit-resource-section">
+        <h3>Edit Existing Resource</h3>
+        <select v-model="editingResourceId" class="edit-select">
+            <option :value="null">-- Create a new resource --</option>
+            <option v-for="res in blueprintStore.blueprint.resources" :key="res.id" :value="res.id">
+                {{ res.name }} ({{ res.id }})
+            </option>
+        </select>
+    </div>
+
     <hr>
 
     <div class="add-resource-form">
-      <h3>Add New Resource</h3>
-      <form @submit.prevent="addNewResource">
+      <h3>{{ editingResourceId ? 'Edit Resource' : 'Add New Resource' }}</h3>
+      <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="resourceName">Display Name:</label>
           <input id="resourceName" v-model="newResource.name" type="text" required>
+          <small>The name players will see (e.g., "Mana Points").</small>
         </div>
 
         <div class="form-group">
-          <label for="initialAmount">Starting Amount:</label>
-          <input id="initialAmount" v-model="newResource.initialAmount" type="number" step="1" min="0">
+          <label for="resourceId">Generated ID:</label>
+          <input id="resourceId" :value="generatedId" type="text" disabled>
+          <small>A unique ID for this resource, used in formulas. Cannot be changed after creation.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="initialAmount">Initial Amount:</label>
+          <input id="initialAmount" v-model="newResource.initialAmount" type="number" step="any" required>
+          <small>The amount of this resource the player starts with.</small>
         </div>
 
         <div class="form-group checkbox-group">
           <input id="isPermanent" v-model="newResource.isPermanent" type="checkbox">
-          <label for="isPermanent">Resource is Permanent (Does NOT reset on Prestige)</label>
+          <label for="isPermanent">Is Permanent?</label>
+          <small>Does this resource persist through prestiges? (Feature coming soon).</small>
         </div>
-        
-        <button type="submit" :disabled="!isFormValid">Add Resource</button>
-        <p v-if="!isFormValid" class="error-message">Please ensure the display name is valid and unique.</p>
+
+        <button type="submit" :disabled="!isFormValid">{{ editingResourceId ? 'Save Changes' : 'Add Resource' }}</button>
+         <button type="button" v-if="editingResourceId" @click="editingResourceId = null" class="cancel-btn">Cancel Edit</button>
       </form>
+    </div>
+
+    <hr>
+
+    <div class="resource-list">
+      <h3>Defined Resources ({{ blueprintStore.blueprint.resources.length }})</h3>
+      <div v-if="blueprintStore.blueprint.resources.length === 0" class="no-items">
+        No resources defined yet.
+      </div>
+      <ul>
+        <li v-for="res in blueprintStore.blueprint.resources" :key="res.id">
+          <span class="resource-name">{{ res.name }}</span>
+          <span class="resource-id">({{ res.id }})</span>
+          <span class="resource-details">
+            Initial: {{ res.initialAmount.toString() }}, Permanent: {{ res.isPermanent ? 'Yes' : 'No' }}
+          </span>
+           <button @click="editingResourceId = res.id" class="edit-btn">Edit</button>
+        </li>
+      </ul>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBlueprintStore } from '@/stores/blueprintStore';
-import type { ResourceBlueprint } from '@/types/Blueprint';
+import type { ResourceBlueprint, ResourceFormData } from '@/types/Blueprint';
 import Decimal from 'break_infinity.js';
 
 const blueprintStore = useBlueprintStore();
 
-// --- Local state for the new resource form ---
-const newResource = ref({
+const newResource = ref<ResourceFormData>({
+  id: '',
   name: '',
-  initialAmount: 0,
-  isPermanent: false, // ⬅️ INITIALIZED
+  initialAmount: '0',
+  isPermanent: false,
 });
 
-// Helper function
-const formatNumber = (value: Decimal | number): string => {
-  if (value instanceof Decimal) {
-    return value.toString();
-  }
-  return value.toLocaleString();
-};
+const editingResourceId = ref<string | null>(null);
 
-// Function to convert display name to a unique ID
-const slugify = (text: string): string => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s-]+/g, '_');
-};
+// Watch for changes in the selected resource to edit
+watch(editingResourceId, (newId) => {
+    if (newId) {
+        const resourceToEdit = blueprintStore.blueprint.resources.find(r => r.id === newId);
+        if (resourceToEdit) {
+            newResource.value = {
+                id: resourceToEdit.id,
+                name: resourceToEdit.name,
+                initialAmount: resourceToEdit.initialAmount.toString(),
+                isPermanent: resourceToEdit.isPermanent,
+            };
+        }
+    } else {
+        // Reset form when not editing
+        newResource.value = { id: '', name: '', initialAmount: '0', isPermanent: false };
+    }
+});
 
-// The ID that will be used for the new resource, including a numerical suffix for uniqueness
+const slugify = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s-]+/g, '_');
+
 const generatedId = computed(() => {
-  const baseSlug = slugify(newResource.value.name);
-  if (!baseSlug) return '';
-
-  let uniqueId = baseSlug;
-  let counter = 1;
-  
-  while (blueprintStore.blueprint.resources.some(r => r.id === uniqueId)) {
-    uniqueId = `${baseSlug}_${counter}`;
-    counter++;
-  }
-  return uniqueId;
+    if (editingResourceId.value) return editingResourceId.value; // Keep ID stable when editing
+    const baseSlug = slugify(newResource.value.name);
+    if (!baseSlug) return '';
+    let uniqueId = baseSlug;
+    let counter = 1;
+    // Ensure ID is unique only when creating a new resource
+    if (!editingResourceId.value) {
+        while (blueprintStore.blueprint.resources.some(r => r.id === uniqueId)) {
+            uniqueId = `${baseSlug}_${counter}`;
+            counter++;
+        }
+    }
+    return uniqueId;
 });
 
 const isFormValid = computed(() => {
-  // Only need to check if the name is filled out, as ID is auto-generated
-  return newResource.value.name.trim() !== '';
+  return newResource.value.name.trim() !== '' && !isNaN(parseFloat(newResource.value.initialAmount));
 });
 
-// --- Action ---
-const addNewResource = () => {
-  if (isFormValid.value) {
+const handleSubmit = () => {
+    if (!isFormValid.value) {
+        alert('Please fill out the form correctly.');
+        return;
+    }
     const resourceData: ResourceBlueprint = {
-      name: newResource.value.name.trim(),
-      id: generatedId.value, 
-      initialAmount: new Decimal(newResource.value.initialAmount),
-      isPermanent: newResource.value.isPermanent, // ⬅️ PASSED
+        id: generatedId.value,
+        name: newResource.value.name.trim(),
+        initialAmount: new Decimal(newResource.value.initialAmount),
+        isPermanent: newResource.value.isPermanent,
     };
 
-    blueprintStore.addResource(resourceData);
+    if (editingResourceId.value) {
+        blueprintStore.updateResource(resourceData);
+    } else {
+        blueprintStore.addResource(resourceData);
+    }
 
-    // Reset form
-    newResource.value.name = '';
-    newResource.value.initialAmount = 0;
-    newResource.value.isPermanent = false;
-  }
+    // Reset form and editing state
+    newResource.value = { id: '', name: '', initialAmount: '0', isPermanent: false };
+    editingResourceId.value = null;
 };
 </script>
 
@@ -117,61 +155,46 @@ const addNewResource = () => {
   max-width: 800px;
   margin: 2rem auto;
   padding: 20px;
-  background-color: #1e1e1e; 
+  background-color: #1e1e1e;
   border-radius: 8px;
   color: #fff;
 }
 
-h2 { color: #ccc; margin-bottom: 0.5rem; }
-h3 { color: #aaa; margin-top: 1.5rem; border-bottom: 1px solid #333; padding-bottom: 5px; }
+h2 { color: #ccc; }
+h3 { color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
 .description { color: #888; margin-bottom: 2rem; }
 
-.resource-list {
-  margin-bottom: 1.5rem;
-}
-
-.resource-item {
-  display: flex;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px dotted #333;
-  color: #fff;
-}
-
-.resource-name { font-weight: bold; color: #76c7c0; }
-.resource-id { font-style: italic; color: #555; }
-.resource-initial { color: #888; }
-
-.form-group {
-  margin-bottom: 15px;
-}
-.checkbox-group { /* Basic style for the new checkbox layout */
-    display: flex;
-    align-items: center;
-}
-.checkbox-group input {
-    width: auto;
-    margin-right: 10px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  color: #ccc;
-}
-
-.form-group input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #333;
-  border-radius: 4px;
+.edit-resource-section, .add-resource-form, .resource-list {
   background-color: #2a2a2a;
-  color: #fff;
-  box-sizing: border-box;
-  font-size: 1em;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
 }
+
+.edit-select {
+    width: 100%;
+    padding: 8px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; margin-bottom: 5px; }
+.form-group input[type="text"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  background-color: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 4px;
+}
+.form-group small { display: block; color: #888; margin-top: 4px; font-size: 0.8em; }
+
+.checkbox-group { display: flex; align-items: center; }
+.checkbox-group input { margin-right: 10px; }
 
 button {
   background-color: #007bff;
@@ -180,18 +203,31 @@ button {
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 1em;
+  margin-right: 10px;
 }
-
-button:disabled {
-  background-color: #555;
-  cursor: not-allowed;
-}
-
-.error-message {
-  color: #dc3545;
-  margin-top: 10px;
+button:disabled { background-color: #555; }
+.cancel-btn { background-color: #6c757d; }
+.edit-btn {
+    background-color: #ffc107;
+    color: #212529;
+    padding: 5px 10px;
+    font-size: 0.9em;
 }
 
 hr { border-color: #333; margin: 20px 0; }
+.no-items { color: #888; font-style: italic; }
+.resource-list ul { list-style: none; padding: 0; }
+.resource-list li {
+  background-color: #333;
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+.resource-name { font-weight: bold; flex-grow: 1; }
+.resource-id { color: #aaa; font-family: monospace; }
+.resource-details { color: #ccc; font-size: 0.9em; }
 </style>
