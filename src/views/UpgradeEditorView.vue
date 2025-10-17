@@ -3,21 +3,22 @@
     <h2>Game Upgrades</h2>
     <p class="description">Define upgrades that provide bonuses or unlock new features.</p>
 
-    <div class="upgrade-list">
-      <h3>Defined Upgrades ({{ blueprintStore.blueprint.upgrades.length }})</h3>
-      <div v-for="upgrade in blueprintStore.blueprint.upgrades" :key="upgrade.id" class="upgrade-item">
-        <span class="upgrade-name">{{ upgrade.name }}</span>
-        <span class="upgrade-id">({{ upgrade.id }})</span>
-        <span class="upgrade-target">Targets: {{ upgrade.targetId }}</span>
-      </div>
-      <p v-if="blueprintStore.blueprint.upgrades.length === 0" class="no-items">No upgrades defined yet.</p>
+    <!-- Edit Section -->
+    <div class="edit-upgrade-section">
+        <h3>Edit Existing Upgrade</h3>
+        <select v-model="editingUpgradeId" class="edit-select">
+            <option :value="null">-- Create a new upgrade --</option>
+            <option v-for="upg in blueprintStore.blueprint.upgrades" :key="upg.id" :value="upg.id">
+                {{ upg.name }} ({{ upg.id }})
+            </option>
+        </select>
     </div>
 
     <hr>
 
     <div class="add-upgrade-form">
-      <h3>Add New Upgrade</h3>
-      <form @submit.prevent="addNewUpgrade">
+      <h3>{{ editingUpgradeId ? 'Edit Upgrade' : 'Add New Upgrade' }}</h3>
+      <form @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="upgradeName">Display Name:</label>
           <input id="upgradeName" v-model="newUpgrade.name" type="text" required>
@@ -57,16 +58,36 @@
 
         <hr>
 
-        <button type="submit" :disabled="!isFormValid">Add Upgrade</button>
+        <button type="submit" :disabled="!isFormValid">{{ editingUpgradeId ? 'Save Changes' : 'Add Upgrade' }}</button>
+        <button type="button" v-if="editingUpgradeId" @click="editingUpgradeId = null" class="cancel-btn">Cancel Edit</button>
       </form>
+    </div>
+
+    <hr>
+
+    <div class="upgrade-list">
+      <h3>Defined Upgrades ({{ blueprintStore.blueprint.upgrades.length }})</h3>
+      <div v-for="upgrade in blueprintStore.blueprint.upgrades" :key="upgrade.id" class="upgrade-item">
+        <span class="upgrade-name">{{ upgrade.name }}</span>
+        <span class="upgrade-id">({{ upgrade.id }})</span>
+        <span class="upgrade-target">Targets: {{ upgrade.targetId }}</span>
+        <button @click="editingUpgradeId = upgrade.id" class="edit-btn">Edit</button>
+      </div>
+      <p v-if="blueprintStore.blueprint.upgrades.length === 0" class="no-items">No upgrades defined yet.</p>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBlueprintStore } from '@/stores/blueprintStore';
-import type { UpgradeBlueprint, StructuredFormula, PurchaseCost, UnlockCondition } from '@/types/Blueprint';
+import type {
+    UpgradeBlueprint,
+    StructuredFormula,
+    UnlockCondition,
+    UpgradeFormData,
+    FormPurchaseCost
+} from '@/types/Blueprint';
 import Decimal from 'break_infinity.js';
 import FormulaEditor from '@/components/FormulaEditor.vue';
 import CostEditor from '@/components/CostEditor.vue';
@@ -77,34 +98,51 @@ const createDefaultFormula = (): StructuredFormula => ({
   steps: [{ type: 'constant', value: '1', operation: 'set' }],
 });
 
-const newUpgrade = ref({
-  name: '',
-  description: '',
-  targetId: '',
-  baseCosts: [] as PurchaseCost[],
-  effectFormula: createDefaultFormula(),
-  costFormula: createDefaultFormula(),
-  unlockConditions: [] as UnlockCondition[],
+const getInitialUpgradeState = (): UpgradeFormData => ({
+    id: '',
+    name: '',
+    description: '',
+    targetId: '',
+    baseCosts: [] as FormPurchaseCost[],
+    effectFormula: createDefaultFormula(),
+    costFormula: createDefaultFormula(),
+    unlockConditions: [] as UnlockCondition[],
+});
+
+const newUpgrade = ref<UpgradeFormData>(getInitialUpgradeState());
+const editingUpgradeId = ref<string | null>(null);
+
+watch(editingUpgradeId, (newId) => {
+    if (newId) {
+        const upgToEdit = blueprintStore.blueprint.upgrades.find(u => u.id === newId);
+        if (upgToEdit) {
+            newUpgrade.value = {
+                ...upgToEdit,
+                baseCosts: upgToEdit.baseCosts.map(c => ({ ...c, amount: c.amount.toString() })),
+                effectFormula: JSON.parse(JSON.stringify(upgToEdit.effectFormula)),
+                costFormula: JSON.parse(JSON.stringify(upgToEdit.costFormula)),
+            };
+        }
+    } else {
+        newUpgrade.value = getInitialUpgradeState();
+    }
 });
 
 const slugify = (text: string): string => {
-  return text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s-]+/g, '_');
+  return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s-]+/g, '_');
 };
 
 const generatedId = computed(() => {
-  const baseSlug = slugify(newUpgrade.value.name);
-  if (!baseSlug) return '';
-  let uniqueId = baseSlug;
-  let counter = 1;
-  while (blueprintStore.blueprint.upgrades.some(u => u.id === uniqueId)) {
-    uniqueId = `${baseSlug}_${counter}`;
-    counter++;
-  }
-  return uniqueId;
+    if (editingUpgradeId.value) return editingUpgradeId.value;
+    const baseSlug = slugify(newUpgrade.value.name);
+    if (!baseSlug) return '';
+    let uniqueId = baseSlug;
+    let counter = 1;
+    while (blueprintStore.blueprint.upgrades.some(u => u.id === uniqueId)) {
+        uniqueId = `${baseSlug}_${counter}`;
+        counter++;
+    }
+    return uniqueId;
 });
 
 const isFormValid = computed(() => {
@@ -112,11 +150,11 @@ const isFormValid = computed(() => {
     newUpgrade.value.name.trim() !== '' &&
     newUpgrade.value.targetId !== '' &&
     newUpgrade.value.baseCosts.length > 0 &&
-    newUpgrade.value.baseCosts.every(cost => cost.resourceId !== '' && cost.amount.gt(0))
+    newUpgrade.value.baseCosts.every(cost => cost.resourceId !== '' && new Decimal(cost.amount).gt(0))
   );
 });
 
-const addNewUpgrade = () => {
+const handleSubmit = () => {
   if (!isFormValid.value) return;
 
   const upgradeData: UpgradeBlueprint = {
@@ -124,25 +162,23 @@ const addNewUpgrade = () => {
     name: newUpgrade.value.name.trim(),
     description: newUpgrade.value.description.trim(),
     targetId: newUpgrade.value.targetId,
-    baseCosts: newUpgrade.value.baseCosts.map(cost => ({
-      ...cost,
-      amount: new Decimal(cost.amount),
-    })),
     effectFormula: newUpgrade.value.effectFormula,
     costFormula: newUpgrade.value.costFormula,
     unlockConditions: newUpgrade.value.unlockConditions,
+    baseCosts: newUpgrade.value.baseCosts.map(cost => ({
+      resourceId: cost.resourceId,
+      amount: new Decimal(cost.amount),
+    })),
   };
 
-  blueprintStore.addUpgrade(upgradeData);
+  if (editingUpgradeId.value) {
+      blueprintStore.updateUpgrade(upgradeData);
+  } else {
+      blueprintStore.addUpgrade(upgradeData);
+  }
 
-  // Reset form
-  newUpgrade.value.name = '';
-  newUpgrade.value.description = '';
-  newUpgrade.value.targetId = '';
-  newUpgrade.value.baseCosts = [];
-  newUpgrade.value.effectFormula = createDefaultFormula();
-  newUpgrade.value.costFormula = createDefaultFormula();
-  newUpgrade.value.unlockConditions = [];
+  newUpgrade.value = getInitialUpgradeState();
+  editingUpgradeId.value = null;
 };
 </script>
 
@@ -160,13 +196,27 @@ h3 { color: #aaa; margin-top: 1.5rem; border-bottom: 1px solid #333; padding-bot
 .description { color: #888; margin-bottom: 2rem; }
 .no-items { color: #888; font-style: italic; margin-top: 10px; }
 
+.edit-upgrade-section {
+    margin-bottom: 20px;
+}
+
+.edit-select {
+    width: 100%;
+    padding: 8px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+}
+
 .upgrade-list {
   margin-bottom: 1.5rem;
 }
 
 .upgrade-item {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
   gap: 10px;
   padding: 8px 0;
   border-bottom: 1px dotted #333;
@@ -218,11 +268,20 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 1em;
+  margin-right: 10px;
 }
 
 button:disabled {
   background-color: #555;
   cursor: not-allowed;
+}
+
+.cancel-btn { background-color: #6c757d; }
+.edit-btn {
+    background-color: #ffc107;
+    color: #212529;
+    padding: 5px 10px;
+    font-size: 0.9em;
 }
 
 hr { border-color: #333; margin: 20px 0; }

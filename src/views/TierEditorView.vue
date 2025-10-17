@@ -10,60 +10,62 @@
           <span class="tier-name">{{ tier.name }}</span>
           <span class="tier-id">({{ tier.id }})</span>
         </div>
-        <div class="tier-content">
-          <div class="item-selection">
-            <h4>Add Items to Tier</h4>
-            <div class="form-group">
-              <label>Select Resource:</label>
-              <select @change="addItemToTier(tier.id, 'resources', $event)">
-                <option disabled selected>-- add resource --</option>
-                <option v-for="res in availableResources(tier)" :key="res.id" :value="res.id">{{ res.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Select Generator:</label>
-              <select @change="addItemToTier(tier.id, 'generators', $event)">
-                <option disabled selected>-- add generator --</option>
-                <option v-for="gen in availableGenerators(tier)" :key="gen.id" :value="gen.id">{{ gen.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Select Upgrade:</label>
-              <select @change="addItemToTier(tier.id, 'upgrades', $event)">
-                <option disabled selected>-- add upgrade --</option>
-                <option v-for="upg in availableUpgrades(tier)" :key="upg.id" :value="upg.id">{{ upg.name }}</option>
-              </select>
-            </div>
-          </div>
-          <div class="item-lists">
-            <div v-if="tier.resources.length > 0">
-              <h4>Resources in this Tier</h4>
-              <ul>
-                <li v-for="resId in tier.resources" :key="resId">
-                  {{ getResourceName(resId) }}
-                  <button @click="removeItemFromTier(tier.id, 'resources', resId)" class="remove-item-btn">&times;</button>
-                </li>
-              </ul>
-            </div>
-            <div v-if="tier.generators.length > 0">
-              <h4>Generators in this Tier</h4>
-              <ul>
-                <li v-for="genId in tier.generators" :key="genId">
-                  {{ getGeneratorName(genId) }}
-                  <button @click="removeItemFromTier(tier.id, 'generators', genId)" class="remove-item-btn">&times;</button>
-                </li>
-              </ul>
-            </div>
-            <div v-if="tier.upgrades.length > 0">
-              <h4>Upgrades in this Tier</h4>
-              <ul>
-                <li v-for="upgId in tier.upgrades" :key="upgId">
-                  {{ getUpgradeName(upgId) }}
-                  <button @click="removeItemFromTier(tier.id, 'upgrades', upgId)" class="remove-item-btn">&times;</button>
-                </li>
-              </ul>
-            </div>
-          </div>
+
+        <!-- New Item Group Display -->
+        <div class="item-group-list">
+            <h4>Item Groups in this Tier ({{ tier.itemGroups.length }})</h4>
+            <div v-if="tier.itemGroups.length === 0" class="no-items">No item groups added yet.</div>
+            <table v-else>
+                <thead>
+                    <tr>
+                        <th>Resource</th>
+                        <th>Generator</th>
+                        <th>Upgrade</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="group in tier.itemGroups" :key="group.id">
+                        <td>{{ getResourceName(group.resourceId) || 'N/A' }}</td>
+                        <td>{{ getGeneratorName(group.generatorId) || 'N/A' }}</td>
+                        <td>{{ getUpgradeName(group.upgradeId) || 'N/A' }}</td>
+                        <td>
+                            <button @click="removeItemGroup(tier.id, group.id)" class="remove-item-btn">&times;</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- New Item Group Form -->
+        <div class="item-group-form">
+            <h4>Add New Item Group</h4>
+            <form @submit.prevent="addItemGroup(tier.id)">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Resource:</label>
+                        <select v-model="newItemGroup[tier.id].resourceId">
+                            <option :value="undefined">-- None --</option>
+                            <option v-for="res in availableResources(tier)" :key="res.id" :value="res.id">{{ res.name }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Generator:</label>
+                        <select v-model="newItemGroup[tier.id].generatorId">
+                            <option :value="undefined">-- None --</option>
+                            <option v-for="gen in availableGenerators(tier)" :key="gen.id" :value="gen.id">{{ gen.name }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Upgrade:</label>
+                        <select v-model="newItemGroup[tier.id].upgradeId">
+                            <option :value="undefined">-- None --</option>
+                            <option v-for="upg in availableUpgrades(tier)" :key="upg.id" :value="upg.id">{{ upg.name }}</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit">Add Group</button>
+            </form>
         </div>
       </div>
       <p v-if="blueprintStore.blueprint.tiers.length === 0" class="no-items">No tiers defined yet.</p>
@@ -85,83 +87,112 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useBlueprintStore } from '@/stores/blueprintStore';
-import type { TierBlueprint } from '@/types/Blueprint';
+import type { TierBlueprint, TierItemGroup } from '@/types/Blueprint';
 
 const blueprintStore = useBlueprintStore();
 
 const newTier = ref({ name: '' });
+const newItemGroup = ref<Record<string, Omit<TierItemGroup, 'id'>>>({});
+
+// Initialize newItemGroup state for each tier
+watch(() => blueprintStore.blueprint.tiers, (tiers) => {
+    tiers.forEach(tier => {
+        if (!newItemGroup.value[tier.id]) {
+            newItemGroup.value[tier.id] = { resourceId: undefined, generatorId: undefined, upgradeId: undefined };
+        }
+    });
+}, { immediate: true, deep: true });
 
 const slugify = (text: string) => text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s-]+/g, '_');
 
 const generatedId = computed(() => {
-  const baseSlug = slugify(newTier.value.name);
-  if (!baseSlug) return '';
-  let uniqueId = baseSlug;
-  let counter = 1;
-  while (blueprintStore.blueprint.tiers.some(t => t.id === uniqueId)) {
-    uniqueId = `${baseSlug}_${counter}`;
-    counter++;
-  }
-  return uniqueId;
+    const baseSlug = slugify(newTier.value.name);
+    if (!baseSlug) return '';
+    let uniqueId = baseSlug;
+    let counter = 1;
+    while (blueprintStore.blueprint.tiers.some(t => t.id === uniqueId)) {
+        uniqueId = `${baseSlug}_${counter}`;
+        counter++;
+    }
+    return uniqueId;
 });
 
 const isFormValid = computed(() => newTier.value.name.trim() !== '');
 
 const addNewTier = () => {
-  if (!isFormValid.value) return;
-  const tierData: TierBlueprint = {
-    id: generatedId.value,
-    name: newTier.value.name.trim(),
-    generators: [],
-    upgrades: [],
-    resources: [],
-  };
-  blueprintStore.addTier(tierData);
-  newTier.value.name = '';
+    if (!isFormValid.value) return;
+    const tierData = {
+        id: generatedId.value,
+        name: newTier.value.name.trim(),
+    };
+    blueprintStore.addTier(tierData);
+    newTier.value.name = '';
 };
 
-const getResourceName = (id: string) => blueprintStore.blueprint.resources.find(r => r.id === id)?.name || id;
-const getGeneratorName = (id: string) => blueprintStore.blueprint.generators.find(g => g.id === id)?.name || id;
-const getUpgradeName = (id: string) => blueprintStore.blueprint.upgrades.find(u => u.id === id)?.name || id;
+const getResourceName = (id?: string) => blueprintStore.blueprint.resources.find(r => r.id === id)?.name || id;
+const getGeneratorName = (id?: string) => blueprintStore.blueprint.generators.find(g => g.id === id)?.name || id;
+const getUpgradeName = (id?: string) => blueprintStore.blueprint.upgrades.find(u => u.id === id)?.name || id;
 
-const availableResources = (tier: TierBlueprint) => blueprintStore.blueprint.resources.filter(r => !tier.resources.includes(r.id));
-const availableGenerators = (tier: TierBlueprint) => blueprintStore.blueprint.generators.filter(g => !tier.generators.includes(g.id));
-const availableUpgrades = (tier: TierBlueprint) => blueprintStore.blueprint.upgrades.filter(u => !tier.upgrades.includes(u.id));
-
-const addItemToTier = (tierId: string, itemType: 'resources' | 'generators' | 'upgrades', event: Event) => {
-  const select = event.target as HTMLSelectElement;
-  const itemId = select.value;
-  blueprintStore.addItemToTier(tierId, itemType, itemId);
-  select.value = ''; // Reset dropdown
+// These computed properties now determine availability based on what's already in *any* group in the tier
+const availableResources = (tier: TierBlueprint) => {
+    const usedIds = new Set(tier.itemGroups.map(g => g.resourceId));
+    return blueprintStore.blueprint.resources.filter(r => !usedIds.has(r.id));
+};
+const availableGenerators = (tier: TierBlueprint) => {
+    const usedIds = new Set(tier.itemGroups.map(g => g.generatorId));
+    return blueprintStore.blueprint.generators.filter(g => !usedIds.has(g.id));
+};
+const availableUpgrades = (tier: TierBlueprint) => {
+    const usedIds = new Set(tier.itemGroups.map(g => g.upgradeId));
+    return blueprintStore.blueprint.upgrades.filter(u => !usedIds.has(u.id));
 };
 
-const removeItemFromTier = (tierId: string, itemType: 'resources' | 'generators' | 'upgrades', itemId: string) => {
-  blueprintStore.removeItemFromTier(tierId, itemType, itemId);
+const addItemGroup = (tierId: string) => {
+    const group = newItemGroup.value[tierId];
+    if (!group || (!group.resourceId && !group.generatorId && !group.upgradeId)) {
+        alert("Please select at least one item for the group.");
+        return;
+    }
+    blueprintStore.addItemGroupToTier(tierId, group);
+    // Reset form for that tier
+    newItemGroup.value[tierId] = { resourceId: undefined, generatorId: undefined, upgradeId: undefined };
+};
+
+const removeItemGroup = (tierId: string, groupId: string) => {
+    blueprintStore.removeItemGroupFromTier(tierId, groupId);
 };
 
 </script>
 
 <style scoped>
-.tier-editor { max-width: 800px; margin: 2rem auto; padding: 20px; background-color: #1e1e1e; border-radius: 8px; color: #fff; }
+.tier-editor { max-width: 960px; margin: 2rem auto; padding: 20px; background-color: #1e1e1e; border-radius: 8px; color: #fff; }
 h2 { color: #ccc; }
-h3 { color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
+h3, h4 { color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top: 1.5rem; }
 .description { color: #888; margin-bottom: 2rem; }
-.no-items { color: #888; font-style: italic; }
-.tier-item { background-color: #2a2a2a; border: 1px solid #333; border-radius: 6px; margin-bottom: 1rem; padding: 15px; }
+.no-items { color: #888; font-style: italic; margin-top: 10px; }
+.tier-item { background-color: #2a2a2a; border: 1px solid #333; border-radius: 6px; margin-bottom: 2rem; padding: 20px; }
 .tier-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-.tier-name { font-weight: bold; color: #76c7c0; font-size: 1.2em; }
-.tier-content { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.item-selection h4, .item-lists h4 { margin-top: 0; color: #aaa; }
-.form-group { margin-bottom: 10px; }
-.form-group label { display: block; margin-bottom: 5px; }
-.form-group select { width: 100%; padding: 8px; background-color: #333; color: #fff; border: 1px solid #555; border-radius: 4px; }
-.item-lists ul { list-style: none; padding: 0; }
-.item-lists li { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; }
-.remove-item-btn { background: none; border: none; color: #dc3545; font-size: 1.2em; cursor: pointer; }
+.tier-name { font-weight: bold; color: #76c7c0; font-size: 1.4em; }
+
+.item-group-list { margin-top: 20px; }
+.item-group-list table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.item-group-list th, .item-group-list td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #444; }
+.item-group-list th { color: #ccc; }
+.item-group-list td { color: #ddd; }
+
+.item-group-form { margin-top: 20px; padding: 15px; background-color: #303030; border-radius: 5px; }
+.item-group-form .form-row { display: flex; gap: 15px; margin-bottom: 10px; }
+.form-group { flex: 1; }
+.form-group label { display: block; margin-bottom: 5px; font-size: 0.9em; color: #bbb; }
+.form-group select { width: 100%; padding: 8px; background-color: #3d3d3d; color: #fff; border: 1px solid #555; border-radius: 4px; }
+
+.remove-item-btn { background: none; border: none; color: #dc3545; font-size: 1.5em; cursor: pointer; padding: 0; line-height: 1; }
+
 .add-tier-form { margin-top: 20px; }
-button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; }
-button:disabled { background-color: #555; }
-hr { border-color: #333; margin: 20px 0; }
+button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.2s; }
+button:hover { background-color: #0056b3; }
+button:disabled { background-color: #555; cursor: not-allowed; }
+hr { border-color: #333; margin: 30px 0; }
 </style>
